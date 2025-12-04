@@ -11,9 +11,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                git branch: 'dev', 
-                    credentialsId: 'github-credentials', 
-                    url: 'https://github.com/pranitpotsure/scalable-microservices-platform.git'
+                checkout scm
             }
         }
 
@@ -68,20 +66,13 @@ pipeline {
         stage('Tag & Push Images to ECR') {
             steps {
                 script {
-                    // AUTH SERVICE
                     sh """
                     docker tag auth-service:latest $ECR_URL/auth-service:latest
                     docker push $ECR_URL/auth-service:latest
-                    """
 
-                    // PRODUCT SERVICE
-                    sh """
                     docker tag product-service:latest $ECR_URL/product-service:latest
                     docker push $ECR_URL/product-service:latest
-                    """
 
-                    // FRONTEND SERVICE
-                    sh """
                     docker tag frontend-service:latest $ECR_URL/frontend-service:latest
                     docker push $ECR_URL/frontend-service:latest
                     """
