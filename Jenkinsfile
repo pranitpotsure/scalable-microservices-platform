@@ -4,31 +4,44 @@ pipeline {
     environment {
         AWS_REGION = "ap-south-1"
         ECR_URL = "623609396310.dkr.ecr.ap-south-1.amazonaws.com"
-        AWS_CREDENTIALS = credentials('aws-credentials')
     }
 
     stages {
 
+        /* ----------------------------------------------------
+         * CHECKOUT CODE
+         * ---------------------------------------------------- */
         stage('Checkout Code') {
             steps {
-                checkout scm
+                git branch: 'dev',
+                    credentialsId: 'github-credentials',
+                    url: 'https://github.com/pranitpotsure/scalable-microservices-platform.git'
             }
         }
 
+        /* ----------------------------------------------------
+         * BASIC TEST PLACEHOLDER
+         * ---------------------------------------------------- */
         stage('Run Basic Tests') {
             steps {
                 sh '''
-                echo "Running basic tests... (placeholder)"
+                echo "Running basic tests (placeholder)..."
                 '''
             }
         }
 
+        /* ----------------------------------------------------
+         * SONARQUBE (SKIPPED BECAUSE NOT INSTALLED)
+         * ---------------------------------------------------- */
         stage('SonarQube Analysis (Optional)') {
             steps {
-                echo "SonarQube not installed — skipping"
+                echo "SonarQube not installed — skipping analysis"
             }
         }
 
+        /* ----------------------------------------------------
+         * BUILD DOCKER IMAGES
+         * ---------------------------------------------------- */
         stage('Build Docker Images') {
             steps {
                 script {
@@ -39,6 +52,9 @@ pipeline {
             }
         }
 
+        /* ----------------------------------------------------
+         * TRIVY SECURITY SCAN
+         * ---------------------------------------------------- */
         stage('Security Scan with Trivy') {
             steps {
                 sh '''
@@ -50,11 +66,12 @@ pipeline {
             }
         }
 
+        /* ----------------------------------------------------
+         * LOGIN TO AWS ECR
+         * ---------------------------------------------------- */
         stage('Login to AWS ECR') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
-                    credentialsId: 'aws-credentials']]) {
-
+                withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
                     sh '''
                     aws ecr get-login-password --region $AWS_REGION \
                         | docker login --username AWS --password-stdin $ECR_URL
@@ -63,16 +80,27 @@ pipeline {
             }
         }
 
-        stage('Tag & Push Images to ECR') {
+        /* ----------------------------------------------------
+         * TAG & PUSH DOCKER IMAGES TO ECR
+         * ---------------------------------------------------- */
+        stage('Push Images to ECR') {
             steps {
                 script {
+
                     sh """
+                    echo "Pushing Auth Service..."
                     docker tag auth-service:latest $ECR_URL/auth-service:latest
                     docker push $ECR_URL/auth-service:latest
+                    """
 
+                    sh """
+                    echo "Pushing Product Service..."
                     docker tag product-service:latest $ECR_URL/product-service:latest
                     docker push $ECR_URL/product-service:latest
+                    """
 
+                    sh """
+                    echo "Pushing Frontend Service..."
                     docker tag frontend-service:latest $ECR_URL/frontend-service:latest
                     docker push $ECR_URL/frontend-service:latest
                     """
