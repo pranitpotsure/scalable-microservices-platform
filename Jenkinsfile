@@ -4,15 +4,14 @@ pipeline {
     environment {
         AWS_REGION = "ap-south-1"
         ECR_URL = "623609396310.dkr.ecr.ap-south-1.amazonaws.com"
-        AWS_CREDENTIALS = credentials('aws-credentials')
     }
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                git branch: 'dev', 
-                    credentialsId: 'github-credentials', 
+                git branch: 'dev',
+                    credentialsId: 'github-credentials',
                     url: 'https://github.com/pranitpotsure/scalable-microservices-platform.git'
             }
         }
@@ -20,14 +19,8 @@ pipeline {
         stage('Run Basic Tests') {
             steps {
                 sh '''
-                echo "Running basic tests... (placeholder)"
+                echo "Running basic tests..."
                 '''
-            }
-        }
-
-        stage('SonarQube Analysis (Optional)') {
-            steps {
-                echo "SonarQube not installed — skipping"
             }
         }
 
@@ -44,7 +37,7 @@ pipeline {
         stage('Security Scan with Trivy') {
             steps {
                 sh '''
-                echo "Running Trivy Security Scan..."
+                echo "Running Trivy scan..."
                 trivy image auth-service:latest || true
                 trivy image product-service:latest || true
                 trivy image frontend-service:latest || true
@@ -54,36 +47,33 @@ pipeline {
 
         stage('Login to AWS ECR') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                     credentialsId: 'aws-credentials']]) {
 
                     sh '''
-                    aws ecr get-login-password --region $AWS_REGION \
-                        | docker login --username AWS --password-stdin $ECR_URL
+                    aws ecr get-login-password --region ${AWS_REGION} \
+                        | docker login --username AWS --password-stdin ${ECR_URL}
                     '''
                 }
             }
         }
 
-        stage('Tag & Push Images to ECR') {
+        stage('Push Images to ECR') {
             steps {
                 script {
-                    // AUTH SERVICE
                     sh """
-                    docker tag auth-service:latest $ECR_URL/auth-service:latest
-                    docker push $ECR_URL/auth-service:latest
+                    docker tag auth-service:latest ${ECR_URL}/auth-service:latest
+                    docker push ${ECR_URL}/auth-service:latest
                     """
 
-                    // PRODUCT SERVICE
                     sh """
-                    docker tag product-service:latest $ECR_URL/product-service:latest
-                    docker push $ECR_URL/product-service:latest
+                    docker tag product-service:latest ${ECR_URL}/product-service:latest
+                    docker push ${ECR_URL}/product-service:latest
                     """
 
-                    // FRONTEND SERVICE
                     sh """
-                    docker tag frontend-service:latest $ECR_URL/frontend-service:latest
-                    docker push $ECR_URL/frontend-service:latest
+                    docker tag frontend-service:latest ${ECR_URL}/frontend-service:latest
+                    docker push ${ECR_URL}/frontend-service:latest
                     """
                 }
             }
